@@ -1,7 +1,5 @@
-import torch
 import re
-from itertools import chain
-from collections import Counter
+import torch
 from fastNLP import MetricBase
 from fastNLP.core.metrics import _compute_f_pre_rec
 

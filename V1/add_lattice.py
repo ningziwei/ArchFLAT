@@ -86,7 +86,7 @@ def equip_chinese_ner_with_lexicon(
         # print('83 add_lattice', v[0])
         v.apply_field(lambda x: list(map(lambda y: y[1], x)), 'lexicons', 'lex_e')  # 取所有词的结束位置
         # print('85 add_lattice', v[0])
-        
+
     # 构建 char 和 bigram 的文本-编号映射，标记其文本在训练数据、非训练数据的出现情况
     if number_normalized:  
         for k,v in datasets.items():    # datasets中的v是dataset类，dataset每行代表一个样本，每列表示一个特征
@@ -124,7 +124,7 @@ def equip_chinese_ner_with_lexicon(
         return pos_e
     
     # print('139 add_lattice', datasets['train'][0])
-    for k in datasets['train'][0].items(): print(k)
+    # for k in datasets['train'][0].items(): print(k)
     # 添加 lattice 格式的文本、开始位置、结束位置
     for k,v in datasets.items():
         v.apply(concat, new_field_name='lattice')       # apply直接作用于每一个样本

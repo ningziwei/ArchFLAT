@@ -1,11 +1,12 @@
 import argparse
 
 parser = argparse.ArgumentParser()
-# performance inrelevant
 
+# 训练设置
 parser.add_argument('--dataset', default='ontonotes', help='weibo|resume|ontonotes|msra')
 parser.add_argument('--continue_train', default=0, type=int)
-parser.add_argument('--saved_name',default='',type=str)
+parser.add_argument('--saved_name',default='best_Lattice_Transformer_SeqLabel',type=str)
+parser.add_argument('--encoding_type',default='bio',type=str,choices=['bio','bioes'])
 
 parser.add_argument('--update_every',type=int,default=1)
 parser.add_argument('--status',choices=['train','test'],default='train')
@@ -54,7 +55,6 @@ parser.add_argument('--norm_lattice_embed',default=True)
 parser.add_argument('--warmup',default=0.1,type=float)
 
 # hyper of model
-# parser.add_argument('--use_bert',type=int,default=1)
 parser.add_argument('--model',default='transformer',help='lstm|transformer')
 parser.add_argument('--model_type',default='bert',help='bert|bart')
 parser.add_argument('--lattice',default=1,type=int)
