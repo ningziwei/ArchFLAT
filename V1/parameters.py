@@ -2,6 +2,11 @@ import argparse
 
 parser = argparse.ArgumentParser()
 # performance inrelevant
+
+parser.add_argument('--dataset', default='ontonotes', help='weibo|resume|ontonotes|msra')
+parser.add_argument('--continue_train', default=0, type=int)
+parser.add_argument('--saved_name',default='',type=str)
+
 parser.add_argument('--update_every',type=int,default=1)
 parser.add_argument('--status',choices=['train','test'],default='train')
 parser.add_argument('--use_bert',type=int,default=1)
@@ -105,11 +110,6 @@ parser.add_argument('--embed_dropout_pos',default='0')
 parser.add_argument('--abs_pos_fusion_func',default='nonlinear_add',
                     choices=['add','concat','nonlinear_concat','nonlinear_add','concat_nonlinear','add_nonlinear'])
 
-parser.add_argument('--dataset', default='ontonotes', help='weibo|resume|ontonotes|msra')
-parser.add_argument('--continue_train', default=0, type=int)
-# parser.add_argument('--debug',default=1)
-
-parser.add_argument('--saved_name',default='',type=str)
 
 args = parser.parse_args()
 if args.ff_dropout_2 < 0:

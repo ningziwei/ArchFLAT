@@ -2,10 +2,11 @@ from fastNLP import cache_results
 
 
 @cache_results(_cache_fp='need_to_defined_fp',_refresh=True)
-def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedding_path=None,
-                                   only_lexicon_in_train=False,word_char_mix_embedding_path=None,
-                                   number_normalized=False,
-                                   lattice_min_freq=1,only_train_min_freq=0):
+def equip_chinese_ner_with_lexicon(
+    datasets,vocabs,embeddings,w_list,word_embedding_path=None,
+    only_lexicon_in_train=False,word_char_mix_embedding_path=None,
+    number_normalized=False,
+    lattice_min_freq=1,only_train_min_freq=0):
     '''
     datasets: {train:data_bundle(instance({chars ['科','技','全'...], target ['O','O'...], bigrams ['科技','技全'...], seq_lens 26})), test:, dev:}
     vocabs: {'char':Vovabulary, 'label':Vovabulary, 'bigram':Vovabulary}, 字符和id相互转换，idx2word, word2idx
@@ -30,9 +31,8 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
     }
     '''
     from fastNLP.core import Vocabulary
-    from V0.utils_ import Trie, get_skip_path
     from functools import partial
-    # from fastNLP.embeddings import StaticEmbedding
+    from utils_ import Trie, get_skip_path
     from fastNLP_module import StaticEmbedding
 
     def normalize_char(inp):
@@ -45,6 +45,7 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
                 result.append(c)
 
         return result
+
     def normalize_bigram(inp):
         '''数字全部换成'0'，其他保持不变'''
         result = []
@@ -85,8 +86,9 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
         # print('83 add_lattice', v[0])
         v.apply_field(lambda x: list(map(lambda y: y[1], x)), 'lexicons', 'lex_e')  # 取所有词的结束位置
         # print('85 add_lattice', v[0])
+        
     # 构建 char 和 bigram 的文本-编号映射，标记其文本在训练数据、非训练数据的出现情况
-    if number_normalized == 3:
+    if number_normalized:  
         for k,v in datasets.items():    # datasets中的v是dataset类，dataset每行代表一个样本，每列表示一个特征
             v.apply_field(normalize_char,'chars','chars')   # 在原位置标准化chars的内容
         # 用于构建、存储和使用 str 到 int 的一一映射
@@ -94,30 +96,13 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
         # 在train中但不在PLM词表中的词构建新的向量，微调时学习其表示；只在非训练集中的词直接对应[UNK]
         vocabs['char'].from_dataset(datasets['train'], field_name='chars',
                                 no_create_entry_dataset=[datasets['dev'], datasets['test']])
+
+    if number_normalized >= 2:
         for k,v in datasets.items():
             v.apply_field(normalize_bigram,'bigrams','bigrams')
         vocabs['bigram'] = Vocabulary() 
         vocabs['bigram'].from_dataset(datasets['train'], field_name='bigrams',
                                   no_create_entry_dataset=[datasets['dev'], datasets['test']])
-    if number_normalized == 1:
-        for k,v in datasets.items():
-            v.apply_field(normalize_char,'chars','chars')
-        vocabs['char'] = Vocabulary()
-        vocabs['char'].from_dataset(datasets['train'], field_name='chars',
-                                no_create_entry_dataset=[datasets['dev'], datasets['test']])
-    if number_normalized == 2:
-        for k,v in datasets.items():
-            v.apply_field(normalize_char,'chars','chars')
-        vocabs['char'] = Vocabulary()
-        vocabs['char'].from_dataset(datasets['train'], field_name='chars',
-                                no_create_entry_dataset=[datasets['dev'], datasets['test']])
-
-        for k,v in datasets.items():
-            v.apply_field(normalize_bigram,'bigrams','bigrams')
-        vocabs['bigram'] = Vocabulary()
-        vocabs['bigram'].from_dataset(datasets['train'], field_name='bigrams',
-                                  no_create_entry_dataset=[datasets['dev'], datasets['test']])
-
 
     def concat(ins):
         '''拼接chars和lexicons，得到作为输入的lattice'''
@@ -150,34 +135,36 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
     # print('148 add_lattice', datasets['train'][0])
     for k in datasets['train'][0].items(): print(k)
 
-
     # 构建 w_list 和 lattice 的文本-编号映射，datasets['train']['lattice']是列表，构建映射时会解析出里面的字符串
     word_vocab = Vocabulary()
     word_vocab.add_word_lst(w_list)
     vocabs['word'] = word_vocab
 
     lattice_vocab = Vocabulary()
-    lattice_vocab.from_dataset(datasets['train'],field_name='lattice',
-                               no_create_entry_dataset=[v for k,v in datasets.items() if k != 'train'])
+    lattice_vocab.from_dataset(
+        datasets['train'],field_name='lattice',
+        no_create_entry_dataset=[v for k,v in datasets.items() if k != 'train'])
     vocabs['lattice'] = lattice_vocab
 
     if word_embedding_path is not None:
-        word_embedding = StaticEmbedding(word_vocab,word_embedding_path,word_dropout=0)
+        word_embedding = StaticEmbedding(
+            word_vocab,word_embedding_path,word_dropout=0)
         embeddings['word'] = word_embedding
 
     if word_char_mix_embedding_path is not None:
-        lattice_embedding = StaticEmbedding(lattice_vocab, word_char_mix_embedding_path,word_dropout=0.01,
-                                            min_freq=lattice_min_freq,only_train_min_freq=only_train_min_freq)
+        lattice_embedding = StaticEmbedding(
+            lattice_vocab, word_char_mix_embedding_path,word_dropout=0.01,
+            min_freq=lattice_min_freq,only_train_min_freq=only_train_min_freq)
         embeddings['lattice'] = lattice_embedding
 
     # 用对应的文本-编号映射将数据集中对应field内容替换为编号
     vocabs['char'].index_dataset(* (datasets.values()),
-                             field_name='chars', new_field_name='chars')
+                            field_name='chars', new_field_name='chars')
     vocabs['bigram'].index_dataset(* (datasets.values()),
-                               field_name='bigrams', new_field_name='bigrams')
+                            field_name='bigrams', new_field_name='bigrams')
     vocabs['label'].index_dataset(* (datasets.values()),
-                              field_name='target', new_field_name='target')
+                            field_name='target', new_field_name='target')
     vocabs['lattice'].index_dataset(* (datasets.values()),
-                                    field_name='lattice', new_field_name='lattice')
+                            field_name='lattice', new_field_name='lattice')
 
     return datasets,vocabs,embeddings
