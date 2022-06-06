@@ -25,6 +25,7 @@ from fastNLP_module import BertEmbedding
 from V1.add_lattice import equip_chinese_ner_with_lexicon
 from V1.models import BERT_SeqLabel
 from V1.models import Lattice_Transformer_SeqLabel, Transformer_SeqLabel
+from V1.metrics import ArchMetrics
 from V1.parameters import args
 
 use_fitlog = True
@@ -55,34 +56,22 @@ refresh_data = False
 
 raw_dataset_cache_name = os.path.join('cache',args.dataset)
 
-if args.dataset == 'msra':
-    '''
-    datasets: chars ['科','技','全'...], target ['O','O'...], bigrams ['科技','技全'...], seq_lens 26
-    vocabs: {'char':Vovabulary, 'label':Vovabulary, 'bigram':Vovabulary}, idx2word, word2idx
-    embeddings: chat和bigram的预训练向量，embedding.embedding.state_dict()['weight']
-    '''
-    datasets,vocabs,embeddings = load_msra_ner_1(
-        msra_ner_cn_path,
-        yangjie_rich_pretrain_unigram_path,
-        yangjie_rich_pretrain_bigram_path,
-        _refresh=refresh_data,index_token=False,
-        _cache_fp=raw_dataset_cache_name,
-        char_min_freq=args.char_min_freq,
-        bigram_min_freq=args.bigram_min_freq,
-        only_train_min_freq=args.only_train_min_freq
-    )
-elif args.dataset == 'code_verb':
-    args.epoch = 200
-    datasets,vocabs,embeddings = load_ontonotes4ner(
-        '/data1/nzw/CNER/code_verb_conll',
-        yangjie_rich_pretrain_unigram_path,
-        yangjie_rich_pretrain_bigram_path,
-        _refresh=refresh_data,index_token=False,
-        _cache_fp=raw_dataset_cache_name,
-        char_min_freq=args.char_min_freq,
-        bigram_min_freq=args.bigram_min_freq,
-        only_train_min_freq=args.only_train_min_freq
-    )
+'''
+datasets: chars ['科','技','全'...], target ['O','O'...], bigrams ['科技','技全'...], seq_lens 26
+vocabs: {'char':Vovabulary, 'label':Vovabulary, 'bigram':Vovabulary}, idx2word, word2idx
+embeddings: chat和bigram的预训练向量，embedding.embedding.state_dict()['weight']
+'''
+args.epoch = 200
+datasets,vocabs,embeddings = load_ontonotes4ner(
+    '/data1/nzw/CNER/code_verb_conll',
+    yangjie_rich_pretrain_unigram_path,
+    yangjie_rich_pretrain_bigram_path,
+    _refresh=refresh_data,index_token=False,
+    _cache_fp=raw_dataset_cache_name,
+    char_min_freq=args.char_min_freq,
+    bigram_min_freq=args.bigram_min_freq,
+    only_train_min_freq=args.only_train_min_freq
+)
 
 # print('flat_main 256', datasets['train'])
 
@@ -100,19 +89,20 @@ print('用的词表的路径:{}'.format(yangjie_rich_pretrain_word_path))
 '''
 w_list: ['</s>','-unknown-','中国','记者','今天',...]
 '''
-w_list = load_yangjie_rich_pretrain_word_list(yangjie_rich_pretrain_word_path,
-                                              _refresh=refresh_data,
-                                              _cache_fp='cache/{}'.format(args.lexicon_name))
+w_list = load_yangjie_rich_pretrain_word_list(
+    yangjie_rich_pretrain_word_path, _refresh=refresh_data,
+    _cache_fp='cache/{}'.format(args.lexicon_name))
 
 cache_name = os.path.join('cache',(
         args.dataset+'_lattice'+'_only_train:{}'+
         '_trainClip:{}'+'_norm_num:{}'+'char_min_freq{}'+
         'bigram_min_freq{}'+'word_min_freq{}'+'only_train_min_freq{}'+
-        'number_norm{}'+'lexicon_{}'+'load_dataset_seed_{}'
-    ).format(args.only_lexicon_in_train,
+        'load_dataset_seed_{}'
+    ).format(
+        args.only_lexicon_in_train,
         args.train_clip,args.number_normalized,args.char_min_freq,
         args.bigram_min_freq,args.word_min_freq,args.only_train_min_freq,
-        args.number_normalized,args.lexicon_name,load_dataset_seed
+        load_dataset_seed
     )
 )
 
@@ -129,15 +119,15 @@ cache_name = os.path.join('cache',(
     embeddings {'char':,'bigram':,'word':,'lattice': StaticEmbedding}
 '''
 datasets,vocabs,embeddings = equip_chinese_ner_with_lexicon(
-        datasets,vocabs,embeddings,
-        w_list,yangjie_rich_pretrain_word_path,
-        _refresh=refresh_data,_cache_fp=cache_name,
-        only_lexicon_in_train=args.only_lexicon_in_train,
-        word_char_mix_embedding_path=yangjie_rich_pretrain_char_and_word_path,
-        number_normalized=args.number_normalized,
-        lattice_min_freq=args.lattice_min_freq,
-        only_train_min_freq=args.only_train_min_freq
-    )
+    datasets,vocabs,embeddings,
+    w_list,yangjie_rich_pretrain_word_path,
+    _refresh=refresh_data,_cache_fp=cache_name,
+    only_lexicon_in_train=args.only_lexicon_in_train,
+    word_char_mix_embedding_path=char_and_word_path,
+    number_normalized=args.number_normalized,
+    lattice_min_freq=args.lattice_min_freq,
+    only_train_min_freq=args.only_train_min_freq
+)
 
 # print('299 train:{}'.format(len(datasets['train'])))
 avg_seq_len = 0
@@ -199,11 +189,11 @@ for k, v in datasets.items():
     if args.lattice:
         v.set_input('lattice','bigrams','seq_len','target')
         v.set_input('lex_num','pos_s','pos_e')
-        v.set_target('target','seq_len')
+        v.set_target('target','seq_len','raw_chars')
         v.set_pad_val('lattice',vocabs['lattice'].padding_idx)
     else:
         v.set_input('chars','bigrams','seq_len','target')
-        v.set_target('target', 'seq_len')
+        v.set_target('target','seq_len','raw_chars')
 
 from utils import norm_static_embedding
 # print(embeddings['char'].embedding.weight[:10])
@@ -325,12 +315,14 @@ with torch.no_grad():
 loss = LossInForward()
 encoding_type = 'bio'
 if args.dataset == 'weibo': encoding_type = 'bio'
-f1_metric = SpanFPreRecMetric(vocabs['label'],pred='pred',target='target',seq_len='seq_len',encoding_type=encoding_type)
+arch_metric = ArchMetrics(vocabs['label'], encoding_type)
+f1_metric = SpanFPreRecMetric(
+    vocabs['label'],pred='pred',target='target',
+    seq_len='seq_len',encoding_type=encoding_type)
 acc_metric = AccuracyMetric(pred='pred',target='target',seq_len='seq_len',)
 acc_metric.set_metric_name('label_acc')
-metrics = [
-    f1_metric,
-    acc_metric]
+
+metrics = [arch_metric]
 
 if args.self_supervised:
     chars_acc_metric = AccuracyMetric(pred='chars_pred',target='chars_target',seq_len='seq_len')
