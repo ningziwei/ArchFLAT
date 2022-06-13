@@ -1,11 +1,11 @@
+import os
 import sys
-import torch
-from fastNLP.core.predictor import Predictor
-
 sys.path.append('../')
+import torch
+
 from paths import *
 from load_data import *
-from utils import norm_static_embedding
+from fastNLP.core.predictor import Predictor
 from V1.add_lattice import equip_chinese_ner_with_lexicon
 from V1.parameters import args
 
@@ -15,11 +15,12 @@ if args.device!='cpu':
 else:
     device = torch.device('cpu')
 refresh_data = False
- 
+
+args.data_path = '/data1/nzw/CNER/'
+raw_dataset_cache_name = os.path.join('cache',args.dataset)
 datasets,vocabs,embeddings = load_data_for_predict(
-    f'/data1/nzw/CNER/{args.dataset}_conll',
-    yangjie_rich_pretrain_unigram_path,
-    yangjie_rich_pretrain_bigram_path,
+    os.path.join(args.data_path, f'{args.dataset}_conll'),
+    unigram_path, bigram_path,
     index_token=False,
     char_min_freq=args.char_min_freq,
     bigram_min_freq=args.bigram_min_freq,
@@ -27,13 +28,15 @@ datasets,vocabs,embeddings = load_data_for_predict(
 )
 
 w_list = load_word_list(
-    yangjie_rich_pretrain_word_path, _refresh=refresh_data,
+    word_path, _refresh=refresh_data,
     _cache_fp='cache/{}'.format(args.lexicon_name))
+
+cache_name = os.path.join('cache',(args.dataset+'_lattice_pred'))
 
 datasets,vocabs,embeddings = equip_chinese_ner_with_lexicon(
     datasets,vocabs,embeddings,
-    w_list,yangjie_rich_pretrain_word_path,
-    _refresh=refresh_data,_cache_fp=None,
+    w_list,word_path,
+    _refresh=refresh_data,_cache_fp=cache_name,
     only_lexicon_in_train=args.only_lexicon_in_train,
     word_char_mix_embedding_path=char_and_word_path,
     number_normalized=args.number_normalized,
@@ -42,7 +45,7 @@ datasets,vocabs,embeddings = equip_chinese_ner_with_lexicon(
 )
 
 # 设定field的输入输出性质和pad_val，即填充值
-for v in datasets.values():
+for k, v in datasets.items():
     if args.lattice:
         v.set_input('lattice','bigrams','seq_len','target')
         v.set_input('lex_num','pos_s','pos_e')
@@ -52,20 +55,9 @@ for v in datasets.values():
         v.set_input('chars','bigrams','seq_len','target')
         v.set_target('target','seq_len','raw_chars')
 
-if args.norm_embed>0:
-    for k,v in embeddings.items():
-        norm_static_embedding(v,args.norm_embed)
-if args.norm_lattice_embed>0:
-    norm_static_embedding(embeddings['lattice'],args.norm_lattice_embed)
-
 model_path = f'/data1/nzw/model_saved/FLAT/{args.dataset}/{args.saved_name}'
 model = torch.load(model_path)
-
-predictor = Predictor(model, batch_size=10)   # 这里的model是加载权重之后的model
-pred_label_list = predictor.predict(datasets['train'])['pred']  # 预测结果
-pred_target = datasets['train']['target']
-pred_raw_char = datasets['train']['raw_chars']
-idx2word = vocabs['label'].idx2word
+bert_embedding = model.bert_embedding
 
 def write_predict_result(f, chars, pred, target=''):
     if target:
@@ -76,7 +68,13 @@ def write_predict_result(f, chars, pred, target=''):
             f.write(' '.join([c,p])+'\n')
     f.write('\n')
 
-out_path = f'/home/ningziwei/Research/ArchFLAT/{args.dataset}.txt'
+predictor = Predictor(model)   # 这里的model是加载权重之后的model
+
+pred_label_list = predictor.predict(datasets['train'])['pred']  # 预测结果
+pred_target = datasets['train']['target']
+pred_raw_char = datasets['train']['raw_chars']
+idx2word = vocabs['label'].idx2word
+out_path = f'/home/ningziwei/Research/ArchFLAT/{args.dataset}.pred'
 f = open(out_path, 'w', encoding='utf8')
 for pred, target, raw_char in zip(pred_label_list, pred_target, pred_raw_char):
     pred = pred[0]

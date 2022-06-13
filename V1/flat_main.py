@@ -59,8 +59,7 @@ args.epoch = 200
 raw_dataset_cache_name = os.path.join('cache',args.dataset)
 datasets,vocabs,embeddings = load_data_for_train(
     f'/data1/nzw/CNER/{args.dataset}_conll',
-    yangjie_rich_pretrain_unigram_path,
-    yangjie_rich_pretrain_bigram_path,
+    unigram_path, bigram_path,
     _refresh=refresh_data,index_token=False,
     _cache_fp=raw_dataset_cache_name,
     char_min_freq=args.char_min_freq,
@@ -74,10 +73,10 @@ if args.gaz_dropout < 0:
 args.hidden = args.head_dim * args.head
 args.ff = args.hidden * args.ff
 
-# print('用的词表的路径:{}'.format(yangjie_rich_pretrain_word_path))
+# print('用的词表的路径:{}'.format(word_path))
 # w_list: ['</s>','-unknown-','中国','记者','今天',...]
 w_list = load_word_list(
-    yangjie_rich_pretrain_word_path, _refresh=refresh_data,
+    word_path, _refresh=refresh_data,
     _cache_fp='cache/{}'.format(args.lexicon_name))
 
 cache_name = os.path.join('cache',(
@@ -107,7 +106,7 @@ cache_name = os.path.join('cache',(
 '''
 datasets,vocabs,embeddings = equip_chinese_ner_with_lexicon(
     datasets,vocabs,embeddings,
-    w_list,yangjie_rich_pretrain_word_path,
+    w_list,word_path,
     _refresh=refresh_data,_cache_fp=cache_name,
     only_lexicon_in_train=args.only_lexicon_in_train,
     word_char_mix_embedding_path=char_and_word_path,
@@ -156,12 +155,12 @@ torch.backends.cudnn.benchmark = False
 
 fitlog.add_hyper(args)
 
-max_seq_len = max(*map(lambda x:max(x['seq_len']),datasets.values()))
 if args.continue_train or args.status == 'test':
     model_path = f'/data1/nzw/model_saved/FLAT/{args.dataset}/{args.saved_name}'
     model = torch.load(model_path)
     bert_embedding = model.bert_embedding
 else:
+    max_seq_len = max(*map(lambda x:max(x['seq_len']),datasets.values()))
     if args.model_type=='bert':
         model_dir = '/data1/nzw/model/cn-wwm'
     elif args.model_type=='bart':
@@ -242,6 +241,8 @@ elif args.optim == 'sgd':
     optimizer = optim.SGD(param_,lr=args.lr,momentum=args.momentum,weight_decay=args.weight_decay)
 
 fitlog_evaluate_dataset = {'test':datasets['test']}
+for ins in datasets['dev']:
+    datasets['train'].append(ins)
 if args.test_train:
     fitlog_evaluate_dataset['train'] = datasets['train']
 evaluate_callback = FitlogCallback(fitlog_evaluate_dataset,verbose=1)
@@ -285,7 +286,7 @@ if args.status == 'train':
     save_path = f'/data1/nzw/model_saved/FLAT/{args.dataset}'
     trainer = Trainer(
         datasets['train'],model,optimizer,loss,args.batch,
-        n_epochs=args.epoch, dev_data=datasets['dev'],
+        n_epochs=args.epoch, dev_data=datasets['test'],
         metrics=metrics, save_path=save_path,
         device=device,callbacks=callbacks,
         dev_batch_size=args.test_batch,
