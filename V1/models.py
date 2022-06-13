@@ -283,7 +283,7 @@ class Lattice_Transformer_SeqLabel(nn.Module):
 
         self.layer_preprocess_sequence = args.pre
         self.layer_postprocess_sequence = args.post
-        self.ff_size = args.ff_size
+        self.ff_size = args.ff
         self.scaled = args.scaled
         if dvc == None:
             dvc = 'cpu'
@@ -348,7 +348,7 @@ class Lattice_Transformer_SeqLabel(nn.Module):
         self.loss_func = nn.CrossEntropyLoss(ignore_index=-100)
 
     def forward(self, lattice, bigrams, seq_len, lex_num, pos_s, pos_e,
-                target, chars_target=None):
+                target=None, chars_target=None):
         if self.mode['debug']:
             print('lattice:{}'.format(lattice))
             print(list(lattice.shape))
@@ -357,7 +357,9 @@ class Lattice_Transformer_SeqLabel(nn.Module):
             print('lex_num:{}'.format(lex_num))
             print('pos_s:{}'.format(pos_s))
             print('pos_e:{}'.format(pos_e))
-
+        print('lattice:{}'.format(lattice))
+        print(type(lattice))
+        print(lattice.size())
         batch_size = lattice.size(0)
         max_seq_len_and_lex_num = lattice.size(1)
         # bigram的长度就是原始序列的长度

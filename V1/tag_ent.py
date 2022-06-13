@@ -119,7 +119,7 @@ def tag_data(input_, mode='txt', out_path=None):
         datasets = load_file_data(input_)
     else:
         datasets = load_str_data(input_)
-    datasets = equip_pred_data_with_lexicon(datasets, w_trie) 
+    datasets = equip_pred_data_with_lexicon(datasets, w_trie, vocabs) 
     for _, v in datasets.items():
         if args.lattice:
             v.set_input('lattice','bigrams','seq_len','target')
@@ -131,6 +131,7 @@ def tag_data(input_, mode='txt', out_path=None):
             v.set_input('chars','bigrams','seq_len','target')
             v.set_target('target','seq_len','raw_chars')
 
+    # print('tag_ent 134', datasets['train'][0].fields)
     pred_result = predictor.predict(datasets['train'])['pred']  # 预测结果
     targets = datasets['train']['target']
     raw_chars = datasets['train']['raw_chars']

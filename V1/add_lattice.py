@@ -156,7 +156,7 @@ def equip_chinese_ner_with_lexicon(
 
     return datasets,vocabs,embeddings
 
-def equip_pred_data_with_lexicon(datasets, w_trie):
+def equip_pred_data_with_lexicon(datasets, w_trie, vocabs):
     # 添加 lexicon 相关的 field
     for k,v in datasets.items():
         # get_skip_path 得到句子中出现的所有词表中的词
@@ -190,5 +190,14 @@ def equip_pred_data_with_lexicon(datasets, w_trie):
         v.apply(concat, new_field_name='lattice')       # apply直接作用于每一个样本
         v.apply(get_pos_s, new_field_name='pos_s')
         v.apply(get_pos_e, new_field_name='pos_e')
+    
+    vocabs['char'].index_dataset(* (datasets.values()),
+                            field_name='chars', new_field_name='chars')
+    vocabs['bigram'].index_dataset(* (datasets.values()),
+                            field_name='bigrams', new_field_name='bigrams')
+    vocabs['label'].index_dataset(* (datasets.values()),
+                            field_name='target', new_field_name='target')
+    vocabs['lattice'].index_dataset(* (datasets.values()),
+                            field_name='lattice', new_field_name='lattice')
 
     return datasets

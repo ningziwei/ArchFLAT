@@ -176,7 +176,7 @@ def load_data_for_train(
 def load_str_data(txt):
     '''预测过程中读取文本'''
     datasets = dict()
-    datasets['train'] = DataSet({'chars':list(txt),'target':[['']*len(txt)]})
+    datasets['train'] = DataSet({'chars':[list(txt)],'target':[['']*len(txt)]})
     datasets['train'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
     datasets['train'].add_seq_len('chars')
     return datasets
