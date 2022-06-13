@@ -1,82 +1,28 @@
-
 import os
 import pickle
 import numpy as np
 import fitlog
 
+from fastNLP.io.loader import ConllLoader
 from fastNLP import Vocabulary
 from fastNLP import cache_results
 from fastNLP_module import StaticEmbedding
+from utils import get_bigrams
 
-# cache_results将其修饰用到的数据缓存到_cache_fp，提升重复调用时的速度
-@cache_results(_cache_fp='cache/ontonotes4ner',_refresh=False)
-def load_ontonotes4ner(path,char_embedding_path=None,bigram_embedding_path=None,index_token=True,train_clip=False,
-                       char_min_freq=1,bigram_min_freq=1,only_train_min_freq=0):
-    from fastNLP.io.loader import ConllLoader
-    from utils import get_bigrams
+@cache_results(_cache_fp='cache/load_word_list',_refresh=False)
+def load_word_list(embedding_path,drop_characters=True):
+    f = open(embedding_path,'r')
+    lines = f.readlines()
+    w_list = []
+    for line in lines:
+        splited = line.strip().split(' ')
+        w = splited[0]
+        w_list.append(w)
 
-    train_path = os.path.join(path,'train.train')
-    dev_path = os.path.join(path,'dev.dev')
-    test_path = os.path.join(path,'test.test')
+    if drop_characters:
+        w_list = list(filter(lambda x:len(x) != 1, w_list))
 
-    loader = ConllLoader(['chars','target'])
-    train_bundle = loader.load(train_path)
-    dev_bundle = loader.load(dev_path)
-    test_bundle = loader.load(test_path)
-
-
-    datasets = dict()
-    datasets['train'] = train_bundle.datasets['train']
-    datasets['dev'] = dev_bundle.datasets['train']
-    datasets['test'] = test_bundle.datasets['train']
-
-
-    datasets['train'].apply_field(get_bigrams,field_name='chars',new_field_name='bigrams')
-    datasets['dev'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
-    datasets['test'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
-
-    datasets['train'].add_seq_len('chars')
-    datasets['dev'].add_seq_len('chars')
-    datasets['test'].add_seq_len('chars')
-
-    char_vocab = Vocabulary()
-    bigram_vocab = Vocabulary()
-    label_vocab = Vocabulary()
-    # print(datasets.keys())
-    # print(len(datasets['dev']))
-    # print(len(datasets['test']))
-    # print(len(datasets['train']))
-    char_vocab.from_dataset(datasets['train'],field_name='chars',
-                            no_create_entry_dataset=[datasets['dev'],datasets['test']])
-    bigram_vocab.from_dataset(datasets['train'],field_name='bigrams',
-                              no_create_entry_dataset=[datasets['dev'],datasets['test']])
-    label_vocab.from_dataset(datasets['train'],field_name='target')
-    if index_token:
-        char_vocab.index_dataset(datasets['train'],datasets['dev'],datasets['test'],
-                                 field_name='chars',new_field_name='chars')
-        bigram_vocab.index_dataset(datasets['train'],datasets['dev'],datasets['test'],
-                                 field_name='bigrams',new_field_name='bigrams')
-        label_vocab.index_dataset(datasets['train'],datasets['dev'],datasets['test'],
-                                 field_name='target',new_field_name='target')
-
-    vocabs = {}
-    vocabs['char'] = char_vocab
-    vocabs['label'] = label_vocab
-    vocabs['bigram'] = bigram_vocab
-    vocabs['label'] = label_vocab
-
-    embeddings = {}
-    if char_embedding_path is not None:
-        char_embedding = StaticEmbedding(char_vocab,char_embedding_path,word_dropout=0.01,
-                                         min_freq=char_min_freq,only_train_min_freq=only_train_min_freq)
-        embeddings['char'] = char_embedding
-
-    if bigram_embedding_path is not None:
-        bigram_embedding = StaticEmbedding(bigram_vocab,bigram_embedding_path,word_dropout=0.01,
-                                           min_freq=bigram_min_freq,only_train_min_freq=only_train_min_freq)
-        embeddings['bigram'] = bigram_embedding
-
-    return datasets,vocabs,embeddings
+    return w_list
 
 @cache_results(_cache_fp='need_to_defined_fp',_refresh=False)
 def equip_chinese_ner_with_skip(datasets,vocabs,embeddings,w_list,word_embedding_path=None,
@@ -153,10 +99,6 @@ def equip_chinese_ner_with_skip(datasets,vocabs,embeddings,w_list,word_embedding
                                list(map(lambda z:word_vocab.to_index(z),y)),x)),
                       'skips_r2l_word',new_field_name='skips_r2l_word')
 
-
-
-
-
     if word_embedding_path is not None:
         word_embedding = StaticEmbedding(word_vocab,word_embedding_path,word_dropout=0)
         embeddings['word'] = word_embedding
@@ -170,20 +112,81 @@ def equip_chinese_ner_with_skip(datasets,vocabs,embeddings,w_list,word_embedding
 
     return datasets,vocabs,embeddings
 
-@cache_results(_cache_fp='cache/load_yangjie_rich_pretrain_word_list',_refresh=False)
-def load_yangjie_rich_pretrain_word_list(embedding_path,drop_characters=True):
-    f = open(embedding_path,'r')
-    lines = f.readlines()
-    w_list = []
-    for line in lines:
-        splited = line.strip().split(' ')
-        w = splited[0]
-        w_list.append(w)
+# cache_results将其修饰用到的数据缓存到_cache_fp，提升重复调用时的速度
+@cache_results(_cache_fp='cache/ontonotes4ner',_refresh=False)
+def load_data_for_train(path,char_embedding_path=None,bigram_embedding_path=None,index_token=True,train_clip=False,
+                       char_min_freq=1,bigram_min_freq=1,only_train_min_freq=0):
+    train_path = os.path.join(path,'train.train')
+    dev_path = os.path.join(path,'dev.dev')
+    test_path = os.path.join(path,'test.test')
 
-    if drop_characters:
-        w_list = list(filter(lambda x:len(x) != 1, w_list))
+    loader = ConllLoader(['chars','target'])
+    train_bundle = loader.load(train_path)
+    dev_bundle = loader.load(dev_path)
+    test_bundle = loader.load(test_path)
 
-    return w_list
+    datasets = dict()
+    datasets['train'] = train_bundle.datasets['train']
+    datasets['dev'] = dev_bundle.datasets['train']
+    datasets['test'] = test_bundle.datasets['train']
+
+    datasets['train'].apply_field(get_bigrams,field_name='chars',new_field_name='bigrams')
+    datasets['dev'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
+    datasets['test'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
+
+    datasets['train'].add_seq_len('chars')
+    datasets['dev'].add_seq_len('chars')
+    datasets['test'].add_seq_len('chars')
+
+    char_vocab = Vocabulary()
+    bigram_vocab = Vocabulary()
+    label_vocab = Vocabulary()
+    
+    char_vocab.from_dataset(datasets['train'],field_name='chars',
+                            no_create_entry_dataset=[datasets['dev'],datasets['test']])
+    bigram_vocab.from_dataset(datasets['train'],field_name='bigrams',
+                              no_create_entry_dataset=[datasets['dev'],datasets['test']])
+    label_vocab.from_dataset(datasets['train'],field_name='target')
+    if index_token:
+        char_vocab.index_dataset(datasets['train'],datasets['dev'],datasets['test'],
+                                 field_name='chars',new_field_name='chars')
+        bigram_vocab.index_dataset(datasets['train'],datasets['dev'],datasets['test'],
+                                 field_name='bigrams',new_field_name='bigrams')
+        label_vocab.index_dataset(datasets['train'],datasets['dev'],datasets['test'],
+                                 field_name='target',new_field_name='target')
+
+    vocabs = {}
+    vocabs['char'] = char_vocab
+    vocabs['label'] = label_vocab
+    vocabs['bigram'] = bigram_vocab
+    vocabs['label'] = label_vocab
+
+    embeddings = {}
+    if char_embedding_path is not None:
+        char_embedding = StaticEmbedding(char_vocab,char_embedding_path,word_dropout=0.01,
+                                         min_freq=char_min_freq,only_train_min_freq=only_train_min_freq)
+        embeddings['char'] = char_embedding
+
+    if bigram_embedding_path is not None:
+        bigram_embedding = StaticEmbedding(bigram_vocab,bigram_embedding_path,word_dropout=0.01,
+                                           min_freq=bigram_min_freq,only_train_min_freq=only_train_min_freq)
+        embeddings['bigram'] = bigram_embedding
+
+    return datasets,vocabs,embeddings
+
+def load_data_for_predict(txt):
+    '''预测过程中读取数据'''
+    pred_path = os.path.join(path,'pred.pred')
+
+    loader = ConllLoader(['chars','target'])
+    test_bundle = loader.load(pred_path)
+
+    datasets = dict()
+    datasets['train'] = test_bundle.datasets['train']
+    datasets['train'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
+    datasets['train'].add_seq_len('chars')
+
+    return datasets
 
 
 if __name__ == '__main__':
