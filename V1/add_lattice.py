@@ -1,4 +1,9 @@
+import copy
+from functools import partial
 from fastNLP import cache_results
+from fastNLP.core import Vocabulary
+from fastNLP_module import StaticEmbedding
+from utils_ import Trie, get_skip_path
 
 
 @cache_results(_cache_fp='need_to_defined_fp',_refresh=True)
@@ -30,10 +35,6 @@ def equip_chinese_ner_with_lexicon(
         'lattice': StaticEmbedding
     }
     '''
-    from fastNLP.core import Vocabulary
-    from functools import partial
-    from utils_ import Trie, get_skip_path
-    from fastNLP_module import StaticEmbedding
 
     def normalize_char(inp):
         '''数字全部换成'0'，其他保持不变'''
@@ -58,20 +59,6 @@ def equip_chinese_ner_with_lexicon(
     # 单词查找树，前缀树
     w_trie = Trie()
     for w in w_list: w_trie.insert(w)
-    # 只保留外部词表中出现在训练集中的词，提高数据处理速度
-    if only_lexicon_in_train:
-        print('只加载在trian中出现过的词汇')
-        lexicon_in_train = set()
-        for s in datasets['train']['chars']:
-            lexicon_in_s = w_trie.get_lexicon(s)
-            for _,_,lexicon in lexicon_in_s:
-                lexicon_in_train.add(''.join(lexicon))
-        print('lexicon in train:{}'.format(len(lexicon_in_train)))
-        print('i.e.: {}'.format(list(lexicon_in_train)[:10]))
-        w_trie = Trie()
-        for w in lexicon_in_train: w_trie.insert(w)
-
-    import copy
     # 添加 lexicon 相关的 field
     for k,v in datasets.items():
         # print('74 add_lattice', v[0])
@@ -168,3 +155,40 @@ def equip_chinese_ner_with_lexicon(
                             field_name='lattice', new_field_name='lattice')
 
     return datasets,vocabs,embeddings
+
+def equip_pred_data_with_lexicon(datasets, w_trie):
+    # 添加 lexicon 相关的 field
+    for k,v in datasets.items():
+        # get_skip_path 得到句子中出现的所有词表中的词
+        v.apply_field(partial(get_skip_path,w_trie=w_trie),'chars','lexicons')      # 给每个句子添加词汇信息
+        v.apply_field(copy.copy, 'chars','raw_chars')
+        v.add_seq_len('lexicons','lex_num')                                         # 统计词汇个数
+        v.apply_field(lambda x: list(map(lambda y: y[0], x)), 'lexicons', 'lex_s')  # 取所有词的开始位置
+        v.apply_field(lambda x: list(map(lambda y: y[1], x)), 'lexicons', 'lex_e')  # 取所有词的结束位置
+
+    def concat(ins):
+        '''拼接chars和lexicons，得到作为输入的lattice'''
+        chars = ins['chars']
+        lexicons = ins['lexicons']
+        result = chars + list(map(lambda x:x[2],lexicons))
+        return result
+    def get_pos_s(ins):
+        '''拼接char和lex的开始位置'''
+        lex_s = ins['lex_s']
+        seq_len = ins['seq_len']
+        pos_s = list(range(seq_len)) + lex_s
+        return pos_s
+    def get_pos_e(ins):
+        '''拼接char和lex的结束位置'''
+        lex_e = ins['lex_e']
+        seq_len = ins['seq_len']
+        pos_e = list(range(seq_len)) + lex_e
+        return pos_e
+    
+    # 添加 lattice 格式的文本、开始位置、结束位置
+    for k,v in datasets.items():
+        v.apply(concat, new_field_name='lattice')       # apply直接作用于每一个样本
+        v.apply(get_pos_s, new_field_name='pos_s')
+        v.apply(get_pos_e, new_field_name='pos_e')
+
+    return datasets

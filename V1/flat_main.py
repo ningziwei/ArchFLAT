@@ -79,18 +79,7 @@ w_list = load_word_list(
     word_path, _refresh=refresh_data,
     _cache_fp='cache/{}'.format(args.lexicon_name))
 
-cache_name = os.path.join('cache',(
-        args.dataset+'_lattice'+'_only_train:{}'+
-        '_trainClip:{}'+'_norm_num:{}'+'char_min_freq{}'+
-        'bigram_min_freq{}'+'word_min_freq{}'+'only_train_min_freq{}'+
-        'load_dataset_seed_{}'
-    ).format(
-        args.only_lexicon_in_train,
-        args.train_clip,args.number_normalized,args.char_min_freq,
-        args.bigram_min_freq,args.word_min_freq,args.only_train_min_freq,
-        load_dataset_seed
-    )
-)
+cache_name = os.path.join('cache',args.dataset+'_embed')
 
 # for k in datasets['train'][0].items(): print(k)
 # 对实体抽取数据进行数据增强
@@ -172,20 +161,9 @@ else:
     )
     model = Lattice_Transformer_SeqLabel(
         embeddings['lattice'], embeddings['bigram'], 
-        args.hidden, len(vocabs['label']), args.head, args.layer, 
-        args.use_abs_pos, args.use_rel_pos, args.learn_pos, args.add_pos,
-        args.pre, args.post, args.ff, args.scaled, dropout, 
-        args.use_bigram, mode, device, vocabs, 
-        max_seq_len=max_seq_len, rel_pos_shared=args.rel_pos_shared,
-        k_proj=args.k_proj, q_proj=args.q_proj,
-        v_proj=args.v_proj, r_proj=args.r_proj,
-        self_supervised=args.self_supervised, attn_ff=args.attn_ff,
-        pos_norm=args.pos_norm, ff_activate=args.ff_activate,
-        abs_pos_fusion_func=args.abs_pos_fusion_func,
-        embed_dropout_pos=args.embed_dropout_pos,
-        four_pos_shared=args.four_pos_shared,
-        four_pos_fusion=args.four_pos_fusion,
-        four_pos_fusion_shared=args.four_pos_fusion_shared,
+        len(vocabs['label']), dropout, args,
+        mode, device, vocabs, 
+        max_seq_len=max_seq_len,
         bert_embedding=bert_embedding
     )
 
@@ -296,64 +274,6 @@ if args.status == 'train':
 
 # 直接用训好的模型预测
 from fastNLP.core.predictor import Predictor
-def label_sequence_to_entities(label_sequence, texts, scheme="BIO"):
-    '''
-    word_sequence: ["w0", "w1", ...]
-    label_sequence: list or torch.Tensor(sen_len) for BIOES or torch.Tensor(sen_len, 2) for SPAN
-    scheme: "BIOES" or "SPAN"
-    '''
-    if type(label_sequence) is torch.Tensor:
-        label_sequence = label_sequence.tolist()
-    tags = label_sequence
-    entityMentions = []
-    count = len(label_sequence)
-    i = 0
-    if scheme.upper() == 'BIO':
-        while i < count:
-            if tags[i].startswith("B"):
-                j = i + 1
-                while j < count:
-                    if tags[j].startswith("O") or tags[j].startswith("B"):
-                        j -= 1
-                        break
-                    j += 1
-                entityMentions.append({
-                    "start_index": i,
-                    "end_index": j+1,
-                    "text": ' '.join(texts[i:(j+1)])
-                })
-                i = j + 1
-            else:
-                i += 1
-    elif scheme.upper() == 'BIOES':
-        while i < count:
-            if tags[i].startswith("B"):
-                j = i + 1
-                while j < count:
-                    if tags[j].startswith("O") or tags[j].startswith("B"):
-                        j -= 1
-                        break
-                    elif tags[j].startswith("E"):
-                        entityMentions.append({
-                            "start_index": i,
-                            "end_index": j+1,
-                            "text": ''.join(texts[i:(j+1)])
-                        })
-                        break
-                    else:
-                        j += 1
-                i = j + 1
-            elif tags[i].startswith("S"):
-                entityMentions.append({
-                    "start_index": i,
-                    "end_index": i+1,
-                    "text": ''.join(texts[i:(i+1)])
-                    # "label": tags[i][2:]
-                })
-                i += 1
-            else:
-                i += 1
-    return entityMentions
 
 def write_predict_result(f, chars, pred, target=''):
     if target:
@@ -382,8 +302,7 @@ if args.status == 'test':
     out_path = f'/home/ningziwei/Research/FLAT/{args.dataset}.txt'
     f = open(out_path, 'w', encoding='utf8')
     for pred, target, raw_char in zip(test_label_list, test_target, test_raw_char):
-        pred = pred[0]
-        pred = [idx2word[e] for e in pred]
+        pred = [idx2word[e] for e in pred[0]]
         target = [idx2word[e] for e in target]
         write_predict_result(f, raw_char, target, pred)
     f.close()

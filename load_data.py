@@ -1,11 +1,7 @@
 import os
-import pickle
-import numpy as np
-import fitlog
-
-from fastNLP.io.loader import ConllLoader
-from fastNLP import Vocabulary
+from fastNLP import Vocabulary, DataSet
 from fastNLP import cache_results
+from fastNLP.io.loader import ConllLoader
 from fastNLP_module import StaticEmbedding
 from utils import get_bigrams
 
@@ -114,8 +110,11 @@ def equip_chinese_ner_with_skip(datasets,vocabs,embeddings,w_list,word_embedding
 
 # cache_results将其修饰用到的数据缓存到_cache_fp，提升重复调用时的速度
 @cache_results(_cache_fp='cache/ontonotes4ner',_refresh=False)
-def load_data_for_train(path,char_embedding_path=None,bigram_embedding_path=None,index_token=True,train_clip=False,
-                       char_min_freq=1,bigram_min_freq=1,only_train_min_freq=0):
+def load_data_for_train(
+    path,char_embedding_path=None,bigram_embedding_path=None,
+    index_token=True,train_clip=False,char_min_freq=1,
+    bigram_min_freq=1,only_train_min_freq=0
+):
     train_path = os.path.join(path,'train.train')
     dev_path = os.path.join(path,'dev.dev')
     test_path = os.path.join(path,'test.test')
@@ -174,16 +173,22 @@ def load_data_for_train(path,char_embedding_path=None,bigram_embedding_path=None
 
     return datasets,vocabs,embeddings
 
-def load_data_for_predict(txt):
-    '''预测过程中读取数据'''
-    pred_path = os.path.join(path,'pred.pred')
+def load_str_data(txt):
+    '''预测过程中读取文本'''
+    datasets = dict()
+    datasets['train'] = DataSet({'chars':list(txt),'target':[['']*len(txt)]})
+    datasets['train'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
+    datasets['train'].add_seq_len('chars')
+    return datasets
 
+def load_file_data(data_path):
+    '''预测过程中读取文件'''
     loader = ConllLoader(['chars','target'])
-    test_bundle = loader.load(pred_path)
+    train_bundle = loader.load(data_path)
 
     datasets = dict()
-    datasets['train'] = test_bundle.datasets['train']
-    datasets['train'].apply_field(get_bigrams, field_name='chars', new_field_name='bigrams')
+    datasets['train'] = train_bundle.datasets['train']
+    datasets['train'].apply_field(get_bigrams,field_name='chars',new_field_name='bigrams')
     datasets['train'].add_seq_len('chars')
 
     return datasets

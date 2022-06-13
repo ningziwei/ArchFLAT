@@ -191,16 +191,13 @@ class Absolute_Position_Embedding(nn.Module):
         return emb
 
 class Lattice_Transformer_SeqLabel(nn.Module):
-    def __init__(self, lattice_embed, bigram_embed, hidden_size, label_size,
-                 num_heads, num_layers,
-                 use_abs_pos,use_rel_pos, learnable_position,add_position,
-                 layer_preprocess_sequence, layer_postprocess_sequence,
-                 ff_size=-1, scaled=True , dropout=None,use_bigram=True,mode=collections.defaultdict(bool),
-                 dvc=None,vocabs=None,
-                 rel_pos_shared=True,max_seq_len=-1,k_proj=True,q_proj=True,v_proj=True,r_proj=True,
-                 self_supervised=False,attn_ff=True,pos_norm=False,ff_activate='relu',rel_pos_init=0,
-                 abs_pos_fusion_func='concat',embed_dropout_pos='0',
-                 four_pos_shared=True,four_pos_fusion=None,four_pos_fusion_shared=True,bert_embedding=None):
+    def __init__(self,
+        lattice_embed, bigram_embed, 
+        label_size, dropout=None, args=None,
+        mode=collections.defaultdict(bool), 
+        dvc=None,vocabs=None,
+        max_seq_len=-1,rel_pos_init=0,
+        bert_embedding=None):
         '''
         :param rel_pos_init: 如果是0，那么从-max_len到max_len的相对位置编码矩阵就按0-2*max_len来初始化，
         如果是1，那么就按-max_len,max_len来初始化
@@ -215,32 +212,32 @@ class Lattice_Transformer_SeqLabel(nn.Module):
             self.use_bert = True
             self.bert_embedding = bert_embedding
 
-        self.four_pos_fusion_shared = four_pos_fusion_shared
         self.mode = mode
-        self.four_pos_shared = four_pos_shared
-        self.abs_pos_fusion_func = abs_pos_fusion_func
+        self.abs_pos_fusion_func = args.abs_pos_fusion_func
+        self.four_pos_shared = args.four_pos_shared
+        self.four_pos_fusion_shared = args.four_pos_fusion_shared
         self.lattice_embed = lattice_embed
         self.bigram_embed = bigram_embed
-        self.hidden_size = hidden_size
+        self.hidden_size = args.hidden
         self.label_size = label_size
-        self.num_heads = num_heads
-        self.num_layers = num_layers
+        self.num_heads = args.head
+        self.num_layers = args.layer
         # self.relative_position = relative_position
-        self.use_abs_pos = use_abs_pos
-        self.use_rel_pos = use_rel_pos
+        self.use_abs_pos = args.use_abs_pos
+        self.use_rel_pos = args.use_rel_pos
         if self.use_rel_pos:
-            assert four_pos_fusion is not None
-        self.four_pos_fusion = four_pos_fusion
-        self.learnable_position = learnable_position
-        self.add_position = add_position
-        self.rel_pos_shared = rel_pos_shared
-        self.self_supervised=self_supervised
+            assert args.four_pos_fusion is not None
+        self.four_pos_fusion = args.four_pos_fusion
+        self.learnable_position = args.learn_pos
+        self.add_position = args.add_pos
+        self.rel_pos_shared = args.rel_pos_shared
+        self.self_supervised=args.self_supervised
         self.vocabs = vocabs
-        self.attn_ff = attn_ff
-        self.pos_norm = pos_norm
-        self.ff_activate = ff_activate
+        self.attn_ff = args.attn_ff
+        self.pos_norm = args.pos_norm
+        self.ff_activate = args.ff_activate
         self.rel_pos_init = rel_pos_init
-        self.embed_dropout_pos = embed_dropout_pos
+        self.embed_dropout_pos = args.embed_dropout_pos
 
         if self.use_rel_pos and max_seq_len < 0:
             print_info('max_seq_len should be set if relative position encode')
@@ -248,10 +245,10 @@ class Lattice_Transformer_SeqLabel(nn.Module):
 
         self.max_seq_len = max_seq_len
 
-        self.k_proj = k_proj
-        self.q_proj = q_proj
-        self.v_proj = v_proj
-        self.r_proj = r_proj
+        self.k_proj = args.k_proj
+        self.q_proj = args.q_proj
+        self.v_proj = args.v_proj
+        self.r_proj = args.r_proj
 
         self.pe = None
         if self.use_abs_pos:
@@ -261,7 +258,7 @@ class Lattice_Transformer_SeqLabel(nn.Module):
 
         if self.use_rel_pos:
             # pe: [(max_seq_len*2+1)×hidden_size]
-            pe = get_embedding(max_seq_len,hidden_size,rel_pos_init=self.rel_pos_init)
+            pe = get_embedding(max_seq_len,self.hidden_size,rel_pos_init=self.rel_pos_init)
             pe_sum = pe.sum(dim=-1,keepdim=True)
             if self.pos_norm:
                 with torch.no_grad():
@@ -284,12 +281,10 @@ class Lattice_Transformer_SeqLabel(nn.Module):
             self.pe_es = None
             self.pe_ee = None
 
-        self.layer_preprocess_sequence = layer_preprocess_sequence
-        self.layer_postprocess_sequence = layer_postprocess_sequence
-        if ff_size==-1:
-            ff_size = self.hidden_size
-        self.ff_size = ff_size
-        self.scaled = scaled
+        self.layer_preprocess_sequence = args.pre
+        self.layer_postprocess_sequence = args.post
+        self.ff_size = args.ff_size
+        self.scaled = args.scaled
         if dvc == None:
             dvc = 'cpu'
         self.dvc = torch.device(dvc)
@@ -297,7 +292,7 @@ class Lattice_Transformer_SeqLabel(nn.Module):
             self.dropout = collections.defaultdict(int)
         else:
             self.dropout = dropout
-        self.use_bigram = use_bigram
+        self.use_bigram = args.use_bigram
 
         if self.use_bigram:
             self.bigram_size = self.bigram_embed.embedding.weight.size(1)
