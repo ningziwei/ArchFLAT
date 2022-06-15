@@ -15,8 +15,8 @@ from fastNLP.embeddings.embedding import TokenEmbedding
 from fastNLP.embeddings.contextual_embedding import ContextualEmbedding
 from fastNLP.embeddings.bert_embedding import _BertWordModel
 # from fastNLP.modules import BertModel
-from utils import MyDropout
-from V1.bart_embedding import _BartWordModel
+from .utils import MyDropout
+from .V1.bart_embedding import _BartWordModel
 
 class StaticEmbedding(TokenEmbedding):
     """

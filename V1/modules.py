@@ -4,7 +4,7 @@ import torch
 import math
 import collections
 from fastNLP import seq_len_to_mask
-from utils import print_info, size2MB,MyDropout
+from ..utils import print_info, size2MB, MyDropout
 
 def get_embedding(max_seq_len, embedding_dim, padding_idx=None, rel_pos_init=0):
     """Build sinusoidal embeddings.
@@ -145,7 +145,6 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
                  ff_final=True,
                  four_pos_fusion=None):
         '''
-
         :param hidden_size:
         :param num_heads:
         :param scaled:
@@ -315,7 +314,6 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
 
     def seq_len_to_rel_distance(self,max_seq_len):
         '''
-
         :param seq_len: seq_len batch
         :return: L*L rel_distance
         '''
@@ -338,7 +336,6 @@ class MultiHead_Attention_Lattice_rel(nn.Module):
                  ff_final=True,
                  four_pos_fusion=None):
         '''
-
         :param hidden_size:
         :param num_heads:
         :param scaled:
@@ -551,7 +548,6 @@ class MultiHead_Attention_Lattice_rel(nn.Module):
 
     def seq_len_to_rel_distance(self,max_seq_len):
         '''
-
         :param seq_len: seq_len batch
         :return: L*L rel_distance
         '''
@@ -571,7 +567,6 @@ class MultiHead_Attention_rel(nn.Module):
                  attn_dropout=None,
                  ff_final=True):
         '''
-
         :param hidden_size:
         :param num_heads:
         :param scaled:
@@ -726,7 +721,6 @@ class MultiHead_Attention_rel(nn.Module):
 
     def seq_len_to_rel_distance(self,max_seq_len):
         '''
-
         :param seq_len: seq_len batch
         :return: L*L rel_distance
         '''
@@ -849,7 +843,6 @@ class Positionwise_FeedForward(nn.Module):
 class Absolute_Position_Embedding(nn.Module):
     def __init__(self,hidden_size,max_len=5000,learnable=False,mode=collections.defaultdict(bool),pos_norm=False):
         '''
-
         :param hidden_size:
         :param max_len:
         :param learnable:
@@ -1078,7 +1071,6 @@ class Transformer_Encoder(nn.Module):
                  attn_ff=True,ff_activate='relu',lattice=False,
                  four_pos_shared=True,four_pos_fusion=None,four_pos_fusion_shared=True):
         '''
-
         :param input_size:
         :param hidden_size:
         :param num_layers:

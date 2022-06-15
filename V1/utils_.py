@@ -1,5 +1,6 @@
 import collections
 from fastNLP import cache_results
+
 def get_skip_path(chars,w_trie):
     '''返回前缀树中所有出现在句子中的词'''
     sentence = ''.join(chars)

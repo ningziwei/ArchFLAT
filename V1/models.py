@@ -6,15 +6,14 @@ import collections
 import torch.nn as nn
 from fastNLP import seq_len_to_mask
 from fastNLP.modules import LSTM
-from utils import get_crf_zero_init
-from utils import print_info
-from utils import MyDropout
-from V1.modules import Transformer_Encoder, get_embedding
+from ..utils import get_crf_zero_init
+from ..utils import print_info
+from ..utils import MyDropout
+from .modules import Transformer_Encoder, get_embedding
 
 class Absolute_SE_Position_Embedding(nn.Module):
     def __init__(self,fusion_func,hidden_size,learnable,mode=collections.defaultdict(bool),pos_norm=False,max_len=5000,):
         '''
-
         :param fusion_func:暂时只有add和concat(直接拼接然后接线性变换)，
         后续得考虑直接拼接再接非线性变换，和将S和E两个位置做非线性变换再加或拼接
         :param hidden_size:
@@ -119,7 +118,6 @@ class Absolute_SE_Position_Embedding(nn.Module):
 class Absolute_Position_Embedding(nn.Module):
     def __init__(self,fusion_func,hidden_size,learnable,mode=collections.defaultdict(bool),pos_norm=False,max_len=5000):
         '''
-
         :param hidden_size:
         :param max_len:
         :param learnable:
@@ -201,7 +199,6 @@ class Lattice_Transformer_SeqLabel(nn.Module):
         '''
         :param rel_pos_init: 如果是0，那么从-max_len到max_len的相对位置编码矩阵就按0-2*max_len来初始化，
         如果是1，那么就按-max_len,max_len来初始化
-
         :param embed_dropout_pos: 如果是0，就直接在embed后dropout，是1就在embed变成hidden size之后再dropout，
         是2就在绝对位置加上之后dropout
         '''

@@ -2,8 +2,8 @@ import os
 from fastNLP import Vocabulary, DataSet
 from fastNLP import cache_results
 from fastNLP.io.loader import ConllLoader
-from fastNLP_module import StaticEmbedding
-from utils import get_bigrams
+from .fastNLP_module import StaticEmbedding
+from .utils import get_bigrams
 
 @cache_results(_cache_fp='cache/load_word_list',_refresh=False)
 def load_word_list(embedding_path,drop_characters=True):
