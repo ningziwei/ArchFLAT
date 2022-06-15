@@ -1,9 +1,9 @@
 import os
 import sys
-sys.path.append('../')
 import torch
 from fastNLP.core.predictor import Predictor
 
+sys.path.append('../')
 from paths import *
 from load_data import *
 from V1.parameters import args
@@ -49,27 +49,24 @@ model_path = f'/data1/nzw/model_saved/FLAT/{args.dataset}/{args.saved_name}'
 model = torch.load(model_path)
 predictor = Predictor(model)
 
-def label_seq_to_dic(label_sequence, raw_chars, scheme="BIO"):
+def label_seq_to_dic(tags, raw_chars, scheme=args.encoding_type):
     '''
-    word_sequence: ["w0", "w1", ...]
-    label_sequence: list or torch.Tensor(sen_len) for BIOES or torch.Tensor(sen_len, 2) for SPAN
-    scheme: "BIOES" or "SPAN"
+    raw_chars: ["w0", "w1", ...]
+    tags: list or torch.Tensor(sen_len)
+    scheme: "BIOES" or "BIO"
     '''
-    if type(label_sequence) is torch.Tensor:
-        label_sequence = label_sequence.tolist()
-    tags = label_sequence
+    if type(tags) is torch.Tensor:
+        tags = tags.tolist()
     raw_chars = ''.join(raw_chars)
     res_dic = {'txt':raw_chars}
-    seq_len = len(label_sequence)
+    seq_len = len(tags)
     def insert_cell(i,j):
         if tags[i][2:] in res_dic:
             res_dic[tags[i][2:]].append(
-                [i,j+1,raw_chars[i:(j+1)]]
-            )
+                [i,j+1,raw_chars[i:(j+1)]])
         else:
             res_dic[tags[i][2:]] = [
-                [i,j+1,raw_chars[i:(j+1)]]
-            ]
+                [i,j+1,raw_chars[i:(j+1)]]]
     i = 0
     if scheme.upper() == 'BIO':
         while i < seq_len:
@@ -143,10 +140,11 @@ def tag_data(input_, mode='txt', out_path=None):
             target = [idx2word[e] for e in target]
             write_predict_result(f, raw_char, target, pred)
         f.close()
+        return '预测完成'
     else:
         pred = [idx2word[e] for e in pred_result[0][0]]
         raw_char = raw_chars[0]
-        return label_seq_to_dic(pred, raw_chars)
+        return label_seq_to_dic(pred, raw_char)
 
 if __name__=='__main__':
     file_path = os.path.join(args.data_path, f'{args.dataset}_conll/pred.pred')
@@ -155,6 +153,7 @@ if __name__=='__main__':
         input_ = input('输入文本或txt文件路径：')
         if input_.endswith('.txt'):
             out_path = input_.replace('.txt','.pred')
-            tag_data(input_, 'file', out_path)
+            res = tag_data(input_, 'file', out_path)
         else:
-            tag_data(input_)
+            res = tag_data(input_)
+        print(res)

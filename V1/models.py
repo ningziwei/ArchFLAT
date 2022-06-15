@@ -357,9 +357,9 @@ class Lattice_Transformer_SeqLabel(nn.Module):
             print('lex_num:{}'.format(lex_num))
             print('pos_s:{}'.format(pos_s))
             print('pos_e:{}'.format(pos_e))
-        print('lattice:{}'.format(lattice))
-        print(type(lattice))
-        print(lattice.size())
+        # print('model 360 lattice:{}'.format(lattice))
+        # print(type(lattice))
+        # print(lattice.size())
         batch_size = lattice.size(0)
         max_seq_len_and_lex_num = lattice.size(1)
         # bigram的长度就是原始序列的长度

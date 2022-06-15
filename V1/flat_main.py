@@ -190,7 +190,8 @@ arch_metric = ArchMetrics(vocabs['label'], args.encoding_type)
 metrics = [arch_metric]
 
 if args.self_supervised:
-    chars_acc_metric = AccuracyMetric(pred='chars_pred',target='chars_target',seq_len='seq_len')
+    chars_acc_metric = AccuracyMetric(
+        pred='chars_pred',target='chars_target',seq_len='seq_len')
     chars_acc_metric.set_metric_name('chars_acc')
     metrics.append(chars_acc_metric)
 
