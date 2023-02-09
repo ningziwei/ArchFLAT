@@ -121,7 +121,8 @@ class ArchMetrics(MetricBase):
         self.fn = 0
 
     def evaluate(self, pred, target, seq_len, raw_chars=None):
-        r"""evaluate函数将针对一个批次的预测结果做评价指标的累计
+        r"""
+        evaluate函数将针对一个批次的预测结果做评价指标的累计
         :param pred: [batch, seq_len] 或者 [batch, seq_len, len(tag_vocab)], 预测的结果
         :param target: [batch, seq_len], 真实值
         :param seq_len: [batch] 文本长度标记
@@ -162,19 +163,19 @@ class ArchMetrics(MetricBase):
                     gold_count += c
                 elif pre_contain_post(pr, gol):
                     # 预测覆盖标注
-                    while p<pre_len and g<gold_len and pre_contain_post(pre_res[p], gold_res[g]):
+                    predict_count += count_parallel(pr)
+                    while g<gold_len and pre_contain_post(pr, gold_res[g]):
                         c = count_parallel(gold_res[g]['text'])
                         g += 1
-                        predict_count += c
                         true_count += c
                         gold_count += c
                     p += 1
                 elif pre_contain_post(gol, pr):
                     # 标注覆盖预测
-                    while p<pre_len and g<gold_len and pre_contain_post(gold_res[g], pre_res[p]):
+                    gold_count += count_parallel(gol)
+                    while p<pre_len and pre_contain_post(gol, pre_res[p]):
                         c = count_parallel(pre_res[p]['text'])
                         p += 1
-                        gold_count += c
                         true_count += c
                         predict_count += c
                     g += 1

@@ -18,15 +18,25 @@ from fastNLP.core import Callback
 from fastNLP.core.metrics import AccuracyMetric
 from fastNLP.core.callback import WarmupCallback,GradientClipCallback
 
-from ..paths import *
-from ..load_data import *
-from ..utils import get_peking_time, print_info
-from ..utils import norm_static_embedding
-from ..fastNLP_module import BertEmbedding
-from .add_lattice import equip_chinese_ner_with_lexicon
-from .models import Lattice_Transformer_SeqLabel
-from .metrics import ArchMetrics
-from .parameters import args
+# from ..paths import *
+# from ..load_data import *
+# from ..utils import get_peking_time, print_info
+# from ..utils import norm_static_embedding
+# from ..fastNLP_module import BertEmbedding
+# from .add_lattice import equip_chinese_ner_with_lexicon
+# from .models import Lattice_Transformer_SeqLabel
+# from .metrics import ArchMetrics
+# from .parameters import args
+
+from paths import *
+from load_data import *
+from utils import get_peking_time, print_info
+from utils import norm_static_embedding
+from fastNLP_module import BertEmbedding
+from V1.add_lattice import equip_chinese_ner_with_lexicon
+from V1.models import Lattice_Transformer_SeqLabel
+from V1.metrics import ArchMetrics
+from V1.parameters import args
 
 def main(args):
     use_fitlog = True
@@ -57,7 +67,7 @@ def main(args):
     '''
     args.epoch = 200
     cache_root = '/home/ningziwei/Research/ArchFLAT/V1/cache'
-    cache_name = os.path.join(cache_root,args.dataset)
+    cache_name = os.path.join(cache_root, args.dataset)
     datasets,vocabs,embeddings = load_data_for_train(
         f'/data1/nzw/CNER/{args.dataset}_conll',
         unigram_path, bigram_path,
@@ -225,7 +235,7 @@ def main(args):
         datasets['train'].append(ins)
     if args.test_train:
         fitlog_evaluate_dataset['train'] = datasets['train']
-    evaluate_callback = FitlogCallback(fitlog_evaluate_dataset,verbose=1)
+    evaluate_callback = FitlogCallback(fitlog_evaluate_dataset, verbose=1)
     lrschedule_callback = LRScheduler(lr_scheduler=LambdaLR(optimizer, lambda ep: 1 / (1 + 0.05*ep) ))
     clip_callback = GradientClipCallback(clip_type='value', clip_value=5)
 
@@ -268,7 +278,7 @@ def main(args):
             datasets['train'],model,optimizer,loss,args.batch,
             n_epochs=args.epoch, dev_data=datasets['test'],
             metrics=metrics, save_path=save_path,
-            device=device,callbacks=callbacks,
+            device=device, callbacks=callbacks,
             dev_batch_size=args.test_batch,
             test_use_tqdm=False,check_code_level=-1,
             update_every=args.update_every)
@@ -301,10 +311,16 @@ def main(args):
         # print(test_raw_char[0])
         # for ch in test_raw_char: print(ch)
         idx2word = vocabs['label'].idx2word
-        out_path = f'/home/ningziwei/Research/FLAT/{args.dataset}.txt'
+        out_path = f'/home/ningziwei/Research/ArchFLAT/{args.dataset}.txt'
         f = open(out_path, 'w', encoding='utf8')
-        for pred, target, raw_char in zip(test_label_list, test_target, test_raw_char):
+        for raw_char, pred, target in zip(test_raw_char, test_label_list, test_target):
+            print('316', raw_char)
+            print('317', pred)
+            print('318', target)
             pred = [idx2word[e] for e in pred[0]]
             target = [idx2word[e] for e in target]
             write_predict_result(f, raw_char, target, pred)
         f.close()
+
+if __name__=='__main__':
+    main(args)

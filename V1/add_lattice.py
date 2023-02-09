@@ -2,9 +2,10 @@ import copy
 from functools import partial
 from fastNLP import cache_results
 from fastNLP.core import Vocabulary
-from ..fastNLP_module import StaticEmbedding
-from .utils_ import Trie, get_skip_path
-
+# from ..fastNLP_module import StaticEmbedding
+# from .utils_ import Trie, get_skip_path
+from fastNLP_module import StaticEmbedding
+from V1.utils_ import Trie, get_skip_path
 
 @cache_results(_cache_fp='need_to_defined_fp',_refresh=True)
 def equip_chinese_ner_with_lexicon(
